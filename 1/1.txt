@@ -1,0 +1,23 @@
+// Consulta para tener el precio más bajo activo 
+SELECT MIN(COALESCE(price.discount_price, price.normal_price)) AS lowest_price,
+       product.ean,
+       product.sku,
+       market.name
+FROM product
+LEFT JOIN price ON price.product_id = product.ID LEFT JOIN market ON market.ID = product.market_id
+WHERE price.active = TRUE GROUP BY product.ean, product.sku, market.name;
+
+// Consulta para tener el precio más bajo activo agrupado por market     
+WITH RankedPrices AS (
+    SELECT
+        COALESCE(price.discount_price, price.normal_price) AS price,
+        product.ean,
+        product.sku,
+        market.name,
+        ROW_NUMBER() OVER (PARTITION BY product.ean ORDER BY COALESCE(price.discount_price, price.normal_price)) AS price_rank
+    FROM product LEFT JOIN price ON price.product_id = product.ID LEFT JOIN market ON market.ID = product.market_id
+    WHERE price.active = TRUE
+)
+SELECT price AS lowest_price, ean, sku, name FROM RankedPrices
+WHERE price_rank = 1 ORDER BY name;
+
